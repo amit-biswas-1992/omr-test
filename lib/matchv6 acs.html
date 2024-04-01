@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shape Detection with OpenCV.js</title>
+    <script src="https://docs.opencv.org/master/opencv.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
+
+        <style>
+            canvas {
+                border: 1px solid black;
+            }
+            .piece {
+                display: block;
+            }
+            img {
+                height: 600px;
+            }
+            canvas {
+                height: 200px;
+            }
+            .flex {
+                display: flex;
+            }
+            .left {
+                flex-basis: 60%;
+            }
+        </style>
+
+
+
+</head>
+<body>
+    <input type="file" id="fileInput" multiple="multiple">
+    <canvas id="qr_canvas" style="display: none;"></canvas>
+
+    <button id="start_button" onclick="detect()">Start</button>
+    <button onclick="outputResult()">Export</button>
+    <button onclick="Evaluate()">Evaluate</button>
+    <div id="error"></div>
+    <button id="update" style="display: none;" onclick="update()">Update</button>
+
+    <div class="flex">
+        <div class="left">
+                <div id="filecount"></div>
+                <div id="filename"></div>
+                <textarea id="QR"></textarea>
+                <div id="pieces"></div>
+        </div>
+
+        <div class="right">
+                <img id="inputImage" src="" alt="Input Image">
+        </div>
+    </div>
+
+
+    <script>
+        
+        var index = 0;
+        var running = true;
+        var code;
+        var filename = "";
+        var shape_coords = [];
+        
+        const fileInput = document.getElementById('fileInput');
+    var inputCanvas = document.querySelectorAll('.inputCanvas');
+    var outputCanvas = document.querySelectorAll('.outputCanvas');
+    const circleCountDisplay = document.getElementById('circleCount');
+    const filledCirclesDisplay = document.getElementById('filledCircles');
+    var OMR_result = [];
+    var all_OMR_result = [];
+    var QR_code = 0;
+    var errors = [];
+
+    var update_button = document.getElementById("update");
+
+    function detect() {
+
+    const file = fileInput.files[index];
+
+    var img = document.getElementById("inputImage");
+    img.src = URL.createObjectURL(file);
+    img.onload = function() {
+                URL.revokeObjectURL(img.src); // Free memory
+            }
+
+
+    if (file) {
+        filename = file.name;
+        document.getElementById('filename').innerHTML = filename;
+        document.getElementById('filecount').innerHTML = "File No: " + (index+1);
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const imgElement = new Image();
+            imgElement.onload = function() {
+
+                //QR code
+
+                var canvas = document.getElementById('qr_canvas');
+          var ctx = canvas.getContext('2d');
+          canvas.width = imgElement.width;
+          canvas.height = imgElement.height;
+          ctx.drawImage(imgElement, 0, 0);
+
+          var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          code = jsQR(imageData.data, imageData.width, imageData.height);
+
+          if (code) {
+            document.getElementById('QR').value = code.data;
+            shape_coords = adjustCoordinatesAndSize(code.location.topLeftCorner);
+            console.log(code)
+          } else {
+            document.getElementById('QR').value = "No QR code found.";
+          }
+
+
+        const uniqueShapes = shape_coords;
+
+
+
+
+            if (file) {
+                cutImageIntoPieces(uniqueShapes, file);
+            }
+
+        };
+            imgElement.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    index++;
+
+}
+
+
+
+
+   // Function to cut the image based on coordinates and dimensions
+        // Function to cut the image into pieces based on coordinates and dimensions
+        function cutImageIntoPieces(shapes, file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+
+                    //shapes.reverse();
+
+                    const piecesDiv = document.getElementById('pieces');
+                        piecesDiv.innerHTML = "";
+
+                        // -1 karon sesher ektay omr puron hoyna
+
+                        for(var index = 0; index < shapes.length - 1; index++) {
+                            var shape = shapes[index]
+                                                    // Create a canvas for each piece
+                        const canvas = document.createElement('canvas');
+                        const out_canvas = document.createElement('canvas');
+                        const textArea = document.createElement('textarea');
+                        const ctx = canvas.getContext('2d');
+
+ 
+
+                        // Draw the piece of the image onto the canvas
+                        // Cut the unnessesarry area
+
+                        if(index == 0) {
+                            // Set canvas size to fit the piece
+                            canvas.width = shape.width;
+                            canvas.height = shape.height-100;
+
+                            ctx.drawImage(img, shape.x, shape.y + 100, shape.width, shape.height-100, 0, 0, shape.width, shape.height-100);
+                        } else {
+                            canvas.width = shape.width-50;
+                            canvas.height = shape.height;
+                            ctx.drawImage(img, shape.x+50, shape.y, shape.width-50, shape.height, 0, 0, shape.width-50, shape.height);
+                        }
+                        
+
+                        // Append the canvas to the document
+                        const pieceDiv = document.createElement('div');
+                        pieceDiv.classList.add('piece');
+                        canvas.classList.add("inputCanvas");
+                        out_canvas.classList.add("outputCanvas");
+                        canvas.id = "C" + index;
+                        out_canvas.id = "O" + index;
+                        pieceDiv.appendChild(canvas);
+                        pieceDiv.appendChild(out_canvas);
+                        textArea.id = "I" + index;
+                        pieceDiv.appendChild(textArea);
+                        piecesDiv.appendChild(pieceDiv);
+                        }
+
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+            
+
+                setTimeout(function() {
+
+
+        inputCanvas = document.querySelectorAll('.inputCanvas');
+        outputCanvas = document.querySelectorAll('.outputCanvas');
+        console.log(inputCanvas)
+
+        if(inputCanvas.length == 6) {
+
+        for(var i = 0; i < 6; i++) {
+
+        const inputCtx = inputCanvas[i].getContext('2d');
+        const outputCtx = outputCanvas[i].getContext('2d');
+
+
+            outputCanvas.width = inputCanvas[i].width;
+            outputCanvas.height = inputCanvas[i].height;
+            
+
+            // Enhance the black color by increasing contrast
+            const imageData = inputCtx.getImageData(0, 0, inputCanvas[i].width, inputCanvas[i].height);
+            const pixels = imageData.data;
+
+            for (let i = 0; i < pixels.length; i += 4) {
+                // Check if the pixel is close to black
+                if (pixels[i] < 50 && pixels[i + 1] < 50 && pixels[i + 2] < 50) {
+                    // Increase the contrast by making the black color more bold
+                    pixels[i] = 0;   // Red channel
+                    pixels[i + 1] = 0; // Green channel
+                    pixels[i + 2] = 0; // Blue channel
+                }
+            }
+
+            // Put the modified image data back onto the canvas
+            inputCtx.putImageData(imageData, 0, 0);
+
+            var result = detectCircles(inputCanvas[i], outputCanvas[i]);
+
+            OMR_result.push(result);
+
+
+        }
+
+        //console.log(OMR_result)
+
+        // Get all textarea and set them
+
+        var txtArea1 = document.getElementById('I0');
+        var txtArea2 = document.getElementById('I1');
+        var txtArea3 = document.getElementById('I2');
+        var txtArea4 = document.getElementById('I3');
+        var txtArea5 = document.getElementById('I4');
+        var txtArea6 = document.getElementById('I5');
+
+
+        txtArea1.value = OMR_result[0].join(",");
+        txtArea2.value = OMR_result[1].join(",");
+        txtArea3.value = OMR_result[2].join(",");
+        txtArea4.value = OMR_result[3].join(",");
+        txtArea5.value = OMR_result[4].join(",");
+        txtArea6.value = OMR_result[5].join(",");
+
+       
+        if(code) {
+
+        if(checkArray(OMR_result, code.data)) {
+            setTimeout(function() {
+                detect();
+            }, 50);
+            OMR_result.push(code.data);
+            OMR_result.push(filename);
+            all_OMR_result.push(OMR_result);
+            console.log(all_OMR_result);
+            document.getElementById("start_button").style.display = "inline-block";
+        } else {
+            console.log("Error:", errors);
+            setErrorContent(errors, "error");
+            QR_code = code.data;
+            update_button.style.display = "block";
+            document.getElementById("start_button").style.display = "none";
+            errors = [];
+        }
+        } else {
+            console.log("QR code error");
+            setErrorContent(["QR Code Error"], "error");
+            update_button.style.display = "block";
+            errors = [];
+        }
+
+
+
+        OMR_result = [];
+
+} else {
+    console.log("Less or more box detected.")
+}
+
+
+            }, 50);
+       
+
+        }
+
+
+    function detectCircles(canvas, output) {
+        const outputCtx = output.getContext('2d');
+        let src = cv.imread(canvas);
+        let gray = new cv.Mat();
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+        let circles = new cv.Mat();
+        cv.HoughCircles(gray, circles, cv.HOUGH_GRADIENT, 1, 40, 180, 15, 10, 25);
+        
+        let filledCircles = [];
+        let circle_cords = [];
+
+        output.width = canvas.width;
+        output.height = canvas.height;
+
+        for (let i = 0; i < circles.cols; ++i) {
+            let x = circles.data32F[i * 3];
+            let y = circles.data32F[i * 3 + 1];
+            let radius = circles.data32F[i * 3 + 2];
+            let center = new cv.Point(x, y);
+
+            circle_cords.push({x: x, y:y, radius: radius, index: i});
+
+
+            let isFilled = isCircleFilled(x, y, radius, canvas);
+            if (isFilled) {
+                filledCircles.push(i);
+                outputCtx.fillStyle = 'green'; // Filled circles are marked green
+            } else {
+                outputCtx.fillStyle = 'red'; // Unfilled circles are marked red
+            }
+
+            
+            // Draw the circle
+            outputCtx.beginPath();
+            outputCtx.arc(x, y, radius, 0, 2 * Math.PI, false);
+            outputCtx.lineWidth = 3;
+            outputCtx.strokeStyle = 'black';
+            outputCtx.stroke();
+            outputCtx.fill();
+
+        }
+
+        
+        //console.log("New all green", filledCircles);
+        //console.log("New all", circle_cords);
+
+        var arrangedCoor = [];
+        var result = [];
+
+        //console.log(circles.cols)
+
+        if (circles.cols > 45) {
+            arrangedCoor = arrangeYLowToHigh(getArrangedCoor(circle_cords, 10, 1));
+            result = (getMCQResults(arrangedCoor, filledCircles, 1));
+        } else {
+            arrangedCoor = arrangeXLowToHigh(getArrangedCoor(circle_cords, 4, 0));
+            result= getMCQResults(arrangedCoor, filledCircles, 0);
+        }
+
+
+
+        if(circles.cols !== 40 && circles.cols !== 70) {
+            //result = ["error"];
+            console.log("All", circle_cords);
+            console.log("Arranged", arrangedCoor)
+
+        }
+
+       
+
+        return result;
+
+        
+        
+        src.delete();
+        gray.delete();
+        circles.delete();
+        //processImageFromDataURL(getImageFromCanvas("outputCanvas"))
+    }
+
+    function isCircleFilled(x, y, radius, canvas) {
+
+        const inputCtx = canvas.getContext('2d');
+        let imageData = inputCtx.getImageData(x - radius, y - radius, radius * 2, radius * 2);
+        let pixels = imageData.data;
+
+        let blackCount = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+            let r = pixels[i];
+            let g = pixels[i + 1];
+            let b = pixels[i + 2];
+            // Consider a pixel as black if its RGB values are all close to 0
+            if (r < 20 && g < 20 && b < 20) {
+                blackCount++;
+            }
+        }
+
+        // If the majority of pixels are black, consider the circle filled
+        return blackCount / (pixels.length / 4) > 0.3;
+    }
+
+
+
+
+
+
+    function getArrangedCoor(circles, row, orientation) {
+
+        if(orientation == 1) {
+                // Sort circles based on x and y coordinates
+    circles.sort((a, b) => {
+    if (a.x !== b.x) {
+        return a.x - b.x; // Sort by y coordinate first
+    } else {
+        return b.y - a.y; // If y coordinates are same, sort by x coordinate (high to low)
+    }
+    });
+        } else {
+            // Sort circles based on x and y coordinates
+    circles.sort((a, b) => {
+    if (a.y !== b.y) {
+        return a.y - b.y; // Sort by y coordinate first
+    } else {
+        return b.x - a.x; // If y coordinates are same, sort by x coordinate (high to low)
+    }
+    });
+        }
+
+
+    // Return the new array of sorted circles
+    //console.log(circles);
+
+    // Splitting the circles into 5 arrays with 4 objects each
+
+
+    let arrayOfArrays = [];
+    for (let i = 0; i < circles.length; i += row) {
+    let subArray = circles.slice(i, i + row);
+    //subArray.reverse(); // Reverse the objects within each subarray
+    arrayOfArrays.push(subArray.sort((a, b) => a.x - b.x));
+    }
+
+    // Print the array of arrays
+    //console.log(arrayOfArrays);
+
+    return arrayOfArrays;
+    }
+
+
+    function getMCQResults(questions, attemptedIndices, orientation) {
+
+let results = [];
+
+for (let i = 0; i < questions.length; i++) {
+    let question = questions[i];
+    let result = "";
+
+    if(question.length == 4 || question.length == 10) {
+
+    for (let j = 0; j < question.length; j++) {
+        let option = question[j];
+
+            if (attemptedIndices.includes(option.index)) {
+            if(orientation == 1) {
+                result += j;
+            } else {
+                result += (1 + j); // Convert index to corresponding option (A, B, C, D)  
+            }
+
+        }
+
+
+    } 
+} else {
+        result += "U";
+    }
+
+
+    results.push(result);
+}
+
+
+return results;
+}
+
+
+
+
+
+    function update() {
+
+        var txtArea1 = document.getElementById('I0').value;
+        var txtArea2 = document.getElementById('I1').value;
+        var txtArea3 = document.getElementById('I2').value;
+        var txtArea4 = document.getElementById('I3').value;
+        var txtArea5 = document.getElementById('I4').value;
+        var txtArea6 = document.getElementById('I5').value;
+
+        var txtQR = document.getElementById('QR').value;
+
+        var updated_result = [txtArea1.split(','), txtArea2.split(','), txtArea3.split(','), txtArea4.split(','), txtArea5.split(','), txtArea6.split(',')];
+
+        console.log(updated_result)
+        update_button.style.display = "none";
+        document.getElementById("start_button").style.display = "inline-block";
+
+        if(checkArray(updated_result, txtQR)) {
+            updated_result.push(txtQR);
+            updated_result.push(filename);
+            all_OMR_result.push(updated_result);
+            setErrorContent([], "error")
+            console.log(all_OMR_result);
+        } else {
+            console.log("Error:", errors);
+            setErrorContent(errors, "error");
+            update_button.style.display = "block";
+            document.getElementById("start_button").style.display = "none";
+            errors = [];
+        }
+            
+    }
+
+
+
+
+
+function arrangeYLowToHigh(arrayOfArrays) {
+    // Iterate through each sub-array
+    for (let i = 0; i < arrayOfArrays.length; i++) {
+        // Sort the sub-array based on y-coordinates
+        arrayOfArrays[i].sort((a, b) => a.y - b.y);
+    }
+
+    return arrayOfArrays;
+}
+
+function arrangeXLowToHigh(arrayOfArrays) {
+    // Iterate through each sub-array
+    for (let i = 0; i < arrayOfArrays.length; i++) {
+        // Sort the sub-array based on y-coordinates
+        arrayOfArrays[i].sort((a, b) => a.x - b.x);
+    }
+
+    return arrayOfArrays;
+}
+
+function checkArray(arr, QR) {
+
+        // Condition 0: Check if QR is a number
+        if (typeof QR == 'number') {
+            errors.push("QR Code Error!");
+        return false;
+    }
+
+    // Condition 1: Check if the array length is 6
+    if (arr.length !== 6) {
+        errors.push("All Box are not detected");
+        return false;
+    }
+
+    // Condition 2: Check if the first element size is 7 and total digits equal to 7
+    const firstElement = arr[0];
+    if (firstElement.length !== 7 || getRollLength(firstElement) !== 7) {
+        errors.push("Roll Number Error!");
+        return false;
+    }
+
+    // Condition 3: Check if the rest of the elements have a size of 10
+    for (let i = 1; i < arr.length; i++) {
+        if (arr[i].length !== 10) {
+            errors.push("Less bubbles detected on box-", i+1);
+            return false;
+        }
+    }
+
+        // Condition 4: Check if any element contains 'U'
+        for (let i = 0; i < arr.length; i++) {
+        if (arr[i].includes('U')) {
+            errors.push("Less bubbles detected on box-");
+            return false;
+        }
+    }
+
+    // All conditions passed
+    return true;
+}
+
+function getRollLength(arr) {
+    let numberString = '';
+    for (const digit of arr) {
+        numberString += digit;
+    }
+    const number = Number(numberString);
+    return numberString.length;
+}
+
+function setErrorContent(arrayOfStrings, targetDivId) {
+    // Get the div element
+    var divElement = document.getElementById(targetDivId);
+
+    // Clear existing content of the div
+    divElement.innerHTML = '';
+
+    // Loop through the array and create a <p> element for each string
+    arrayOfStrings.forEach(function(string) {
+        // Create a paragraph element
+        var paragraph = document.createElement('p');
+
+        // Set the text content of the paragraph to the current string
+        paragraph.textContent = string;
+
+        // Append the paragraph element to the div
+        divElement.appendChild(paragraph);
+    });
+}
+
+
+function outputResult() {
+
+    fileData = all_OMR_result;
+    // Initialize an empty array to store the JSON objects
+    var jsonObjects = [];
+
+    // Loop through each set of data in the fileData array
+    fileData.forEach(dataSet => {
+        // Combine all elements of the roll array into a single string and then parse it to an integer
+        var roll = parseInt(dataSet[0].join(''));
+
+        // Create the answer key for this dataset
+        var answerKey = '';
+
+        // Loop through the next 5 arrays in the dataSet
+        for (let i = 1; i <= 5; i++) {
+            dataSet[i].forEach(element => {
+                if (element === "") {
+                    answerKey += 'X';
+                } else if (element.length > 1) {
+                    answerKey += 'M';
+                } else {
+                    answerKey += element;
+                }
+            });
+        }
+
+        // Extract the ID from the second-to-last element of the dataSet
+        var ID = parseInt(dataSet[dataSet.length - 2]);
+
+        // Extract the filename from the last element of the dataSet
+        var filename = dataSet[dataSet.length - 1];
+
+        // Create the JSON object for this dataset
+        var jsonObject = {
+            "roll": roll,
+            "answer_key": formatString(answerKey),
+            "ID": ID,
+            "filename": filename
+        };
+
+        // Add the JSON object to the jsonObjects array
+        jsonObjects.push(jsonObject);
+    });
+    console.log(jsonObjects)
+    return jsonObjects;
+}
+
+
+
+    // make 12223323 string to 1-2-3-4-4
+
+    function formatString(inputString) {
+    let formattedString = '';
+
+    for (let i = 0; i < inputString.length; i++) {
+        formattedString += inputString[i];
+        if (i < inputString.length - 1) {
+            formattedString += '-';
+        }
+    }
+
+    return formattedString;
+}
+
+
+
+
+    // Evaluation Part Start
+
+    function Evaluate() {
+
+var merged = outputResult();
+console.log(merged)
+var ids = getAllIDs(merged);
+  console.log(ids);
+
+
+
+  var myHeaders = new Headers();
+myHeaders.append("Content-Type", "application/json");
+
+var raw = JSON.stringify({
+"ids": ids });
+
+var requestOptions = {
+method: 'POST',
+headers: myHeaders,
+body: raw,
+redirect: 'follow'
+};
+
+fetch("https://omr-d.onrender.com/sets", requestOptions)
+.then(response => response.json())
+.then(result => {
+
+var all_score = (getScore(merged, result))
+
+console.log(all_score);
+convertJSONtoCSVAndDownload(all_score, "data.csv")
+
+
+})
+.catch(error => console.log('error', error));
+
+
+
+function getAllIDs(data) {
+var ids = data.map(function(item) {
+    return item.ID;
+});
+return ids;
+}
+
+
+
+
+
+function getScore(studentsData, answerKey) {
+var scores = [];
+
+studentsData.forEach(function(student) {
+    var score = 0;
+    var wrong = 0;
+    var roll = student.roll;
+    var studentID = student.ID;
+    var studentAnswers = student.answer_key.split('-');
+    var keyAnswers = answerKey[studentID].answer_key.split('-');
+    
+    for (var i = 0; i < studentAnswers.length; i++) {
+        if (studentAnswers[i] !== 'M' && studentAnswers[i] === keyAnswers[i]) {
+            score++;
+        } else if (studentAnswers[i] !== 'X'){
+            wrong++;
+            
+        }
+    }
+
+    scores.push({ roll: roll, id: studentID, score: score - (wrong*0.25), answer_key: answerKey[studentID], student_answer: student.answer_key, file: student.filename });
+});
+
+return scores;
+}
+
+    }
+
+
+
+
+// Function to convert array to CSV
+function convertArrayOfObjectsToCSV(data) {
+    const header = 'roll,id,score,answer_key,questions,options,student_answer,file\n';
+    const csv = data.map(item => {
+        const questions = item.answer_key.questions.map(q => q.question_ID).join('-');
+        const options = item.answer_key.questions.map(q => q.options.join('-')).join('-');
+        return `${item.roll},${item.id},${item.score},"${item.answer_key.answer_key}","${questions}","${options}",${item.student_answer},${item.file}`;
+    }).join('\n');
+    return header + csv;
+}
+
+// Function to download CSV file
+function downloadCSV(csvContent, fileName) {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    if (navigator.msSaveBlob) { // IE 10+
+        navigator.msSaveBlob(blob, fileName);
+    } else {
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+}
+
+// Combined function to convert JSON data to CSV and download the file
+function convertJSONtoCSVAndDownload(data, fileName) {
+    const csvContent = convertArrayOfObjectsToCSV(data);
+    downloadCSV(csvContent, fileName);
+}
+
+
+
+function adjustCoordinatesAndSize(coords) {
+    var x = coords.x;
+    var y = coords.y;
+    // First set of adjustments
+    var adjustedCoordinates1 = {
+        x: x - 450,
+        y: y - 290,
+        height: 625,
+        width: 320
+    };
+    
+    // Second set of adjustments
+    var adjustedCoordinates2 = {
+        x: x - 470,
+        y: y + 448,
+        height: 536,
+        width: 248
+    };
+
+    // Third set of adjustments
+    var adjustedCoordinates3 = {
+        x: x - 200,
+        y: y + 448,
+        height: 536,
+        width: 248
+    };
+
+    // Fourth set of adjustments
+    var adjustedCoordinates4 = {
+        x: x + 64,
+        y: y + 448,
+        height: 536,
+        width: 248
+    };
+
+    // Fifth set of adjustments
+    var adjustedCoordinates5 = {
+        x: x - 470,
+        y: y + 1004,
+        height: 536,
+        width: 248
+    };
+
+    // Sixth set of adjustments
+    var adjustedCoordinates6 = {
+        x: x - 200,
+        y: y + 1004,
+        height: 536,
+        width: 248
+    };
+
+    // Seventh set of adjustments
+    var adjustedCoordinates7 = {
+        x: x + 64,
+        y: y + 1004,
+        height: 536,
+        width: 248
+    };
+    
+    return [adjustedCoordinates1, adjustedCoordinates2, adjustedCoordinates3, adjustedCoordinates4, adjustedCoordinates5, adjustedCoordinates6, adjustedCoordinates7];
+}
+
+
+
+</script>
+
+
+
+</body>
+</html>
