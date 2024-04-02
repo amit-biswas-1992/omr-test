@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shape Detection with OpenCV.js</title>
+    <script src="https://docs.opencv.org/master/opencv.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
+
+        <style>
+            canvas {
+                border: 1px solid black;
+            }
+            .piece {
+                display: block;
+            }
+            img {
+                height: 600px;
+            }
+            canvas {
+                height: 200px;
+            }
+            .flex {
+                display: flex;
+            }
+            .left {
+                flex-basis: 60%;
+            }
+        </style>
+
+
+
+</head>
+<body>
+    <input type="file" id="fileInput">
+
+    <button onclick="detect(fileInput.files[0], function(result) {console.log(result);})">Start</button>
+
+
+<script src="eval.js"></script>
+
+
+
+</body>
+</html>
